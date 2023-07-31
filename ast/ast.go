@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"internal/itoa"
 	"monkey/token"
 )
 
@@ -45,33 +44,29 @@ func (p *Program) String() string {
 
 type Identifier struct {
 	Token token.Token
-	Value int
+	Value string
 }
 
-func (i *Identifier) expressionNode() {
-
-}
+func (i *Identifier) expressionNode() {}
 
 func (i *Identifier) TokenLiteral() string {
 	return i.Token.Literal
 }
 
-func (i *Identifier) String() string { return itoa.Itoa(i.Value) }
+func (i *Identifier) String() string { return i.Value }
 
-type Integer struct {
+type IntegerLiteral struct {
 	Token token.Token
-	Value string
+	Value int64
 }
 
-func (i *Integer) expressionNode() {
+func (i *IntegerLiteral) expressionNode() {}
 
-}
-
-func (i *Integer) TokenLiteral() string {
+func (i *IntegerLiteral) TokenLiteral() string {
 	return i.Token.Literal
 }
 
-func (i *Integer) String() string { return i.Value }
+func (i *IntegerLiteral) String() string { return i.Token.Literal }
 
 type LetStatement struct {
 	Token token.Token
@@ -124,7 +119,7 @@ func (rs *ReturnStatement) String() string {
 }
 
 type ExpressionStatement struct {
-	Token token.Token
+	Token      token.Token
 	Expression Expression
 }
 
@@ -135,10 +130,10 @@ func (es *ExpressionStatement) TokenLiteral() string {
 }
 
 func (es *ExpressionStatement) String() string {
-    // can we remove this check?????
-    if es.Expression != nil {
-        return es.Expression.String()
-    }
-    
+	// can we remove this check?????
+	if es.Expression != nil {
+		return es.Expression.String()
+	}
+
 	return ""
 }

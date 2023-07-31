@@ -5,6 +5,8 @@ import (
 	"monkey/ast"
 	"monkey/lexer"
 	"monkey/token"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -39,18 +41,11 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 	p.nextToken()
 
-    p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
-    p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 
 	return p
-}
-
-func (p *Parser) parseIdentifier() ast.Expression {
-    return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-}
-
-func (p *Parser) parseInteger() ast.Expression {
-    return &ast.Integer{Token: p.curToken, Value: p.curToken.Literal}
 }
 
 func (p *Parser) Errors() []string {
@@ -139,14 +134,31 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return statement
 }
 
-func (p *Parser) parseExpression(precendence int) ast.Expression {
-    prefix := p.prefixParseFns[p.curToken.Type]
-    if prefix == nil {
-        return nil
-    }
-    leftExp := prefix()
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+}
 
-    return leftExp
+func (p *Parser) parseExpression(precendence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		return nil
+	}
+	leftExp := prefix()
+
+	return leftExp
+}
+
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	literal := strings.ReplaceAll(p.curToken.Literal, "_", "")
+
+	num, err := strconv.ParseInt(literal, 10, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	return &ast.IntegerLiteral{Token: p.curToken, Value: num}
 }
 
 func (p *Parser) curTokenIs(tok token.TokenType) bool {

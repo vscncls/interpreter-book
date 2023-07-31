@@ -114,8 +114,11 @@ func (l *Lexer) readIdentifier() string {
 
 func (l *Lexer) readNumber() string {
 	position := l.position
-	for isDigit(l.ch) {
+	for isDigit(l.ch) || l.ch == '_' {
 		l.readChar()
+	}
+	if l.input[l.position-1] == '_' {
+		panic("Invalid integer (`_` at the end of integer is not allowed)")
 	}
 	return l.input[position:l.position]
 }

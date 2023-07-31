@@ -23,6 +23,7 @@ let ten = 10;
 
    10 == 10;
    10 != 9;
+	10_000_000
    `
 
 	tests := []struct {
@@ -102,6 +103,7 @@ let ten = 10;
 		{token.NOT_EQ, "!="},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+		{token.INT, "10_000_000"},
 		{token.EOF, ""},
 	}
 	l := New(input)
