@@ -112,7 +112,9 @@ func (rs *ReturnStatement) String() string {
 
 	out.WriteString(rs.TokenLiteral())
 	out.WriteString(" ")
-	out.WriteString(rs.Value.String())
+	if rs.Value != nil {
+		out.WriteString(rs.Value.String())
+	}
 	out.WriteString(";")
 
 	return out.String()
@@ -235,5 +237,29 @@ func (ie *IfExpression) String() string {
 		out.WriteString(ie.Alternative.String())
 		out.WriteString("\n}")
 	}
+	return out.String()
+}
+
+type FunctionLiteral struct {
+	Token         token.Token
+	ParameterList []*Identifier
+	Body          *BlockStatement
+}
+
+func (fl *FunctionLiteral) statementNode()       {}
+func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("fn(")
+	for i, param := range fl.ParameterList {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(param.String())
+	}
+	out.WriteString(") {\n")
+	out.WriteString(fl.Body.String())
+	out.WriteString("\n}")
+
 	return out.String()
 }

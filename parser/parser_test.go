@@ -57,11 +57,9 @@ func TestReturnStatements(t *testing.T) {
 		t.Fatalf("program.Statements does not contain 3 statements. got=%d", len(program.Statements))
 	}
 
-	for _, stmt := range program.Statements {
-		if !testReturnStatement(t, stmt, "") {
-			return
-		}
-	}
+	testReturnStatement(t, program.Statements[0], "5")
+	testReturnStatement(t, program.Statements[1], "10")
+	testReturnStatement(t, program.Statements[2], "838383")
 }
 
 func TestIdentifierExpression(t *testing.T) {
@@ -421,6 +419,81 @@ func TestIfElseExpression(t *testing.T) {
 	}
 }
 
+func TestFunctionLiteral(t *testing.T) {
+	input := `fn(x,y) {
+		return x + y;
+	}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
+			1, len(program.Statements))
+	}
+
+	function, ok := program.Statements[0].(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.FunctionLiteral. got=%T",
+			program.Statements[0])
+	}
+
+	if !testIdentifier(t, function.ParameterList[0], "x") {
+		t.Errorf("Parameter 0 is not x, found: %s", function.ParameterList[0].Value)
+	}
+	if !testIdentifier(t, function.ParameterList[1], "y") {
+		t.Errorf("Parameter 0 is not x, found: %s", function.ParameterList[0].Value)
+	}
+
+	if len(function.Body.Statements) != 1 {
+		t.Errorf("body is not 1 statements. got=%d\n",
+			len(function.Body.Statements))
+	}
+	returnStatement, ok := function.Body.Statements[0].(*ast.ReturnStatement)
+	if !ok {
+		t.Fatalf("Statements[0] is not ast.ReturnStatement. got=%T",
+			function.Body.Statements[0])
+	}
+	testReturnStatement(t, returnStatement, "(x + y)")
+}
+
+func TestFunctionLiteralNoParams(t *testing.T) {
+	input := `fn() {
+		return ;
+	}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
+			1, len(program.Statements))
+	}
+
+	function, ok := program.Statements[0].(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.FunctionLiteral. got=%T",
+			program.Statements[0])
+	}
+
+	if len(function.ParameterList) != 0 {
+		t.Fatalf("Parameter list not empty, actual size: %d", len(function.ParameterList))
+	}
+
+	if len(function.Body.Statements) != 1 {
+		t.Errorf("body is not 1 statements. got=%d\n",
+			len(function.Body.Statements))
+	}
+	returnStatement, ok := function.Body.Statements[0].(*ast.ReturnStatement)
+	if !ok {
+		t.Fatalf("Statements[0] is not ast.ReturnStatement. got=%T",
+			function.Body.Statements[0])
+	}
+	testReturnStatement(t, returnStatement, "")
+}
+
 func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 	if s.TokenLiteral() != "let" {
 		t.Errorf("s.TokenLiteral not 'let'. got=%q", s.TokenLiteral())
@@ -453,9 +526,20 @@ func testReturnStatement(t *testing.T, s ast.Statement, valueLiteral string) boo
 		return false
 	}
 
-	_, ok := s.(*ast.ReturnStatement)
+	ret, ok := s.(*ast.ReturnStatement)
 	if !ok {
 		t.Errorf("s not *ast.ReturnStatement. got=%T", s)
+		return false
+	}
+
+	// ugly af, fix this
+	if ret.Value == nil {
+		if valueLiteral != "" {
+			t.Errorf("value literal doesn't match, expected: '%s'; got: '' (value is nil)", valueLiteral)
+			return false
+		}
+	} else if ret.Value.String() != valueLiteral {
+		t.Errorf("value literal doesn't match, expected: '%s'; got: '%s'", valueLiteral, ret.Value.String())
 		return false
 	}
 

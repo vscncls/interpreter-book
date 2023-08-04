@@ -114,6 +114,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.FUNCTION:
+		return p.parseFunctionLiteral()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -141,10 +143,14 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	statement := &ast.ReturnStatement{Token: p.curToken}
+	p.nextToken()
 
-	for !(p.curTokenIs(token.SEMICOLON) || p.curTokenIs(token.EOF)) {
+	if p.curTokenIsNot(token.SEMICOLON) {
+		statement.Value = p.parseExpression(LOWEST)
 		p.nextToken()
 	}
+
+	p.expectCur(token.SEMICOLON)
 
 	return statement
 }
@@ -163,6 +169,10 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
+	if !p.curTokenIs(token.IDENT) {
+		p.errors = append(p.errors, "Token is not an indentifier")
+		return nil
+	}
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
@@ -299,8 +309,50 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return expression
 }
 
+func (p *Parser) parseFunctionLiteral() *ast.FunctionLiteral {
+	expression := &ast.FunctionLiteral{Token: p.curToken}
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	p.nextToken()
+
+	parameters := []*ast.Identifier{}
+	for !p.curTokenIs(token.RPAREN) {
+		if p.curTokenIs(token.EOF) {
+			panic("unexpected EOF, expected identifier in param list")
+		}
+
+		identifier, _ := p.parseIdentifier().(*ast.Identifier)
+		parameters = append(parameters, identifier)
+
+		p.nextToken()
+		if p.curTokenIs(token.COMMA) {
+			// skip to next identifier
+			p.nextToken()
+		} else if p.curTokenIs(token.RPAREN) {
+		} else {
+			p.errors = append(p.errors, fmt.Sprintf("[fn] expected , or ), found %s", p.curToken.Literal))
+			return nil
+		}
+	}
+	expression.ParameterList = parameters
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	expression.Body = p.parseBlockStatement()
+
+	return expression
+}
+
 func (p *Parser) curTokenIs(tok token.TokenType) bool {
 	return p.curToken.Type == tok
+}
+
+func (p *Parser) curTokenIsNot(tok token.TokenType) bool {
+	return p.curToken.Type != tok
 }
 
 func (p *Parser) peekTokenIs(tok token.TokenType) bool {
@@ -320,6 +372,21 @@ func (p *Parser) expectPeek(tok token.TokenType) bool {
 func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
 		t, p.peekToken.Type)
+	p.errors = append(p.errors, msg)
+}
+
+func (p *Parser) expectCur(tok token.TokenType) bool {
+	if p.curTokenIs(tok) {
+		return true
+	} else {
+		p.curError(tok)
+		return false
+	}
+}
+
+func (p *Parser) curError(t token.TokenType) {
+	msg := fmt.Sprintf("expected current token to be %s, got %s instead",
+		t, p.curToken.Type)
 	p.errors = append(p.errors, msg)
 }
 
