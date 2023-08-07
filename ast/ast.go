@@ -246,7 +246,8 @@ type FunctionLiteral struct {
 	Body          *BlockStatement
 }
 
-func (fl *FunctionLiteral) statementNode()       {}
+// FunctionLiteral is an expression because functions can be assigned or passed as parameters
+func (fl *FunctionLiteral) expressionNode()      {}
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
@@ -260,6 +261,29 @@ func (fl *FunctionLiteral) String() string {
 	out.WriteString(") {\n")
 	out.WriteString(fl.Body.String())
 	out.WriteString("\n}")
+
+	return out.String()
+}
+
+type CallExpression struct {
+	Token     token.Token // (
+	Function  Expression
+	Arguments []Expression
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	for i, param := range ce.Arguments {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(param.String())
+	}
+	out.WriteString(")")
 
 	return out.String()
 }

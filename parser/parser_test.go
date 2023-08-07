@@ -9,8 +9,8 @@ import (
 func TestLetStatements(t *testing.T) {
 	input := `
         let x = 5;
-        let y = 10;
-        let foobar = 838383;
+        let y = true;
+        let foobar = y;
     `
 	l := lexer.New(input)
 	p := New(l)
@@ -24,14 +24,20 @@ func TestLetStatements(t *testing.T) {
 	}
 	tests := []struct {
 		expectedIdentifier string
+		expectedValue interface{}
 	}{
-		{"x"},
-		{"y"},
-		{"foobar"},
+		{"x", 5},
+		{"y", true},
+		{"foobar", "y"},
 	}
 	for i, tt := range tests {
 		stmt := program.Statements[i]
 		if !testLetStatement(t, stmt, tt.expectedIdentifier) {
+			return
+		}
+
+		val := stmt.(*ast.LetStatement).Value
+		if !testLiteralExpression(t, val, tt.expectedValue) {
 			return
 		}
 	}
@@ -433,10 +439,16 @@ func TestFunctionLiteral(t *testing.T) {
 			1, len(program.Statements))
 	}
 
-	function, ok := program.Statements[0].(*ast.FunctionLiteral)
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
-		t.Fatalf("program.Statements[0] is not ast.FunctionLiteral. got=%T",
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement. got=%T",
 			program.Statements[0])
+	}
+
+	function, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("program.Statements[0].Expression is not ast.FunctionLiteral. got=%T",
+			stmt.Expression)
 	}
 
 	if !testIdentifier(t, function.ParameterList[0], "x") {
@@ -472,10 +484,16 @@ func TestFunctionLiteralNoParams(t *testing.T) {
 			1, len(program.Statements))
 	}
 
-	function, ok := program.Statements[0].(*ast.FunctionLiteral)
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
-		t.Fatalf("program.Statements[0] is not ast.FunctionLiteral. got=%T",
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement. got=%T",
 			program.Statements[0])
+	}
+
+	function, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("program.Statements[0].Expression is not ast.FunctionLiteral. got=%T",
+			stmt.Expression)
 	}
 
 	if len(function.ParameterList) != 0 {
@@ -492,6 +510,71 @@ func TestFunctionLiteralNoParams(t *testing.T) {
 			function.Body.Statements[0])
 	}
 	testReturnStatement(t, returnStatement, "")
+}
+
+func TestFunctionCall(t *testing.T) {
+	input := `a(1, b, fn() {1}, 1+1)`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
+			1, len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement. got=%T",
+			program.Statements[0])
+	}
+
+	call, ok := stmt.Expression.(*ast.CallExpression)
+	if !ok {
+		t.Fatalf("program.Statements[0].Expression is not ast.FunctionCall. got=%T",
+			stmt.Expression)
+	}
+
+	if len(call.Arguments) != 4 {
+		t.Fatalf("Parameter list not = 4, actual size: %d", len(call.Arguments))
+	}
+
+	testIntegerLiteral(t, call.Arguments[0], 1)
+	testIdentifier(t, call.Arguments[1], "b")
+	if _, ok := call.Arguments[2].(*ast.FunctionLiteral); !ok {
+		t.Errorf("Parameter 2 is not function literal, actual: %T", call.Arguments[2])
+	}
+	testInfixExpression(t, call.Arguments[3], 1, "+", 1)
+}
+
+func TestFunctionCallNoArgs(t *testing.T) {
+	input := `a()`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
+			1, len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not *ast.ExpressionStatement. got=%T",
+			program.Statements[0])
+	}
+
+	call, ok := stmt.Expression.(*ast.CallExpression)
+	if !ok {
+		t.Fatalf("program.Statements[0].Expression is not ast.FunctionCall. got=%T",
+			stmt.Expression)
+	}
+
+	if len(call.Arguments) != 0 {
+		t.Fatalf("Parameter list not empty, actual size: %d", len(call.Arguments))
+	}
 }
 
 func testLetStatement(t *testing.T, s ast.Statement, name string) bool {

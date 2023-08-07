@@ -29,6 +29,7 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:    SUM,
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
+	token.LPAREN:   CALL,
 }
 
 type (
@@ -58,6 +59,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
 	p.registerPrefix(token.FALSE, p.parseBooleanLiteral)
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
@@ -72,6 +74,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
+	p.registerInfix(token.LPAREN, p.parseCallExpression)
 
 	return p
 }
@@ -114,8 +117,6 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
-	case token.FUNCTION:
-		return p.parseFunctionLiteral()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -133,6 +134,9 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
 	}
+
+	p.nextToken()
+	statement.Value = p.parseExpression(LOWEST)
 
 	for !(p.curTokenIs(token.SEMICOLON) || p.curTokenIs(token.EOF)) {
 		p.nextToken()
@@ -309,7 +313,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return expression
 }
 
-func (p *Parser) parseFunctionLiteral() *ast.FunctionLiteral {
+func (p *Parser) parseFunctionLiteral() ast.Expression {
 	expression := &ast.FunctionLiteral{Token: p.curToken}
 	if !p.expectPeek(token.LPAREN) {
 		return nil
@@ -345,6 +349,30 @@ func (p *Parser) parseFunctionLiteral() *ast.FunctionLiteral {
 	expression.Body = p.parseBlockStatement()
 
 	return expression
+}
+
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+	call := &ast.CallExpression{Token: p.curToken, Function: function}
+	p.nextToken()
+
+	call.Arguments = []ast.Expression{}
+
+	for p.curTokenIsNot(token.RPAREN) {
+		call.Arguments = append(call.Arguments, p.parseExpression(LOWEST))
+
+		if p.peekTokenIs(token.COMMA) {
+			// skip to next identifier
+			p.nextToken()
+			p.nextToken()
+		} else if p.peekTokenIs(token.RPAREN) {
+			p.nextToken()
+		} else {
+			p.errors = append(p.errors, fmt.Sprintf("[fn-call] expected , or ), found %s", p.curToken.Literal))
+			return nil
+		}
+	}
+
+	return call
 }
 
 func (p *Parser) curTokenIs(tok token.TokenType) bool {
