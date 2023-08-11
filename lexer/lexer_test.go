@@ -24,6 +24,8 @@ let ten = 10;
    10 == 10;
    10 != 9;
 	10_000_000
+	"foobar"
+	"foo bar"
    `
 
 	tests := []struct {
