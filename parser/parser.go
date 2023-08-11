@@ -150,7 +150,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	p.nextToken()
 
 	if p.curTokenIsNot(token.SEMICOLON) {
-		statement.Value = p.parseExpression(LOWEST)
+		statement.ReturnValue = p.parseExpression(LOWEST)
 		p.nextToken()
 	}
 

@@ -98,7 +98,7 @@ func (ls *LetStatement) String() string {
 
 type ReturnStatement struct {
 	Token token.Token
-	Value Expression
+	ReturnValue Expression
 }
 
 func (rs *ReturnStatement) statementNode() {}
@@ -112,8 +112,8 @@ func (rs *ReturnStatement) String() string {
 
 	out.WriteString(rs.TokenLiteral())
 	out.WriteString(" ")
-	if rs.Value != nil {
-		out.WriteString(rs.Value.String())
+	if rs.ReturnValue != nil {
+		out.WriteString(rs.ReturnValue.String())
 	}
 	out.WriteString(";")
 

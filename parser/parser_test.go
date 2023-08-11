@@ -616,13 +616,13 @@ func testReturnStatement(t *testing.T, s ast.Statement, valueLiteral string) boo
 	}
 
 	// ugly af, fix this
-	if ret.Value == nil {
+	if ret.ReturnValue == nil {
 		if valueLiteral != "" {
 			t.Errorf("value literal doesn't match, expected: '%s'; got: '' (value is nil)", valueLiteral)
 			return false
 		}
-	} else if ret.Value.String() != valueLiteral {
-		t.Errorf("value literal doesn't match, expected: '%s'; got: '%s'", valueLiteral, ret.Value.String())
+	} else if ret.ReturnValue.String() != valueLiteral {
+		t.Errorf("value literal doesn't match, expected: '%s'; got: '%s'", valueLiteral, ret.ReturnValue.String())
 		return false
 	}
 
